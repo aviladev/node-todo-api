@@ -2,7 +2,7 @@ const express = require('express')
 
 const { mongoose } = require('./db/mongoose')
 const { Todo } = require('./models/todo')
-const { User }  = require('./models/users')
+const { User }  = require('./models/user')
 
 const app = express()
 
@@ -17,6 +17,14 @@ app.post('/todos', ({ body: {text} }, res) => {
       res.send(doc)
     })
     .catch(err => res.status(400).send(err))
+})
+
+app.get('/todos', (req, res) => {
+  Todo.find()
+    .then(todos => res.send({ todos }))
+    .catch(e => 
+      res.status(400).send(e)
+    )
 })
 
 app.listen(3000, () =>
