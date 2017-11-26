@@ -12,10 +12,7 @@ app.post('/todos', ({ body: {text} }, res) => {
   const todo = new Todo({ text })
 
   todo.save()
-    .then(doc => {
-      console.log('Saved:', doc)
-      res.send(doc)
-    })
+    .then(doc => res.send(doc))
     .catch(err => res.status(400).send(err))
 })
 
