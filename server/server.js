@@ -40,6 +40,22 @@ app.get('/todos/:id', ({ params: {id} }, res) => {
     .catch( e => res.status(400).send() )
 })
 
+app.delete('/todos/:id', async ({ params: {id} }, res) => {
+  if ( !ObjectID.isValid(id) ){
+    return res.status(404).send()
+  }
+
+  try {
+    const removedTodo = await Todo.findByIdAndRemove(id)
+    if (!removedTodo)
+      return res.status(404).send()
+
+    res.status(200).send({ removedTodo })
+  } catch (e) {
+    res.status(400).send()
+  }
+})
+
 app.listen(PORT, () =>
   console.log(`Started on port ${PORT}`)
 )
