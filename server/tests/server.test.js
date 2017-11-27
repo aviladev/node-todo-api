@@ -10,6 +10,8 @@ const todos = [
   { _id: ObjectID(), text: 'Second test todo' }
 ]
 
+const [firstTestTodo, secondTestTodo] = todos
+
 beforeEach(async () => {
   await Todo.remove({})
   await Todo.insertMany(todos)
@@ -64,7 +66,6 @@ describe('GET /todos', () => {
 
 describe('GET /todos/:id', () => {
   it('should return todo doc', async () => {
-    const [ firstTestTodo ] = todos
     const res = await request(app)
       .get(`/todos/${firstTestTodo._id.toHexString()}`)
       .expect(200)
@@ -83,6 +84,34 @@ describe('GET /todos/:id', () => {
   it('should return 404 for non-object ids', () =>
     request(app)
       .get(`/todos/${123}`)
+      .expect(404)
+  )
+})
+
+describe('DELETE /todos/:id', () => {
+  it('should remove a todo', async () => {
+    const hexID = firstTestTodo._id.toHexString()
+
+    const res = await request(app)
+      .delete(`/todos/${hexID}`)
+      .expect(200)
+
+    const { body: {removedTodo} } = res
+    expect(removedTodo._id).toBe(hexID)
+
+    const queriedTodo = await Todo.findById(hexID)
+    expect(queriedTodo).toNotExist()
+  })
+
+  it('should return 404 if todo not found', () =>
+    request(app)
+      .delete(`/todos/${ObjectID().toHexString()}`)
+      .expect(404)
+  )
+
+  it('should return 404 for non-object ids', () =>
+    request(app)
+      .delete(`/todos/${123}`)
       .expect(404)
   )
 })
