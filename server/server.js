@@ -1,3 +1,5 @@
+require('./config/config')
+
 const express = require('express')
 const { ObjectID } = require('mongodb')
 const _ = require('lodash')
@@ -7,7 +9,7 @@ const { Todo } = require('./models/todo')
 const { User }  = require('./models/user')
 
 const app = express()
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT
 
 app.use(express.json())
 
