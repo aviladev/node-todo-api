@@ -5,9 +5,15 @@ const { ObjectID } = require('mongodb')
 const { app } = require('../server')
 const { Todo } = require('../models/todo')
 
-const todos = [
-  { _id: ObjectID(), text: 'First test todo' },
-  { _id: ObjectID(), text: 'Second test todo' }
+const todos = [{
+    _id: ObjectID(),
+    text: 'First test todo'
+  }, {
+    _id: ObjectID(),
+    text: 'Second test todo',
+    completed: true,
+    completedAt: 333
+  }
 ]
 
 const [firstTestTodo, secondTestTodo] = todos
@@ -114,4 +120,40 @@ describe('DELETE /todos/:id', () => {
       .delete(`/todos/${123}`)
       .expect(404)
   )
+})
+
+describe('PATCH /todos/:id', () => {
+  it('should update the todo', async () => {
+      const newText = 'First test todo updated'
+      
+      const res = await request(app)
+      .patch(`/todos/${firstTestTodo._id}`)
+      .send({
+        text: newText,
+        completed: true 
+      })
+      .expect(200)
+      
+      const { todo: {text, completed, completedAt} } = res.body
+      expect(text).toBe(newText)
+      expect(completed).toBe(true)
+      expect(completedAt).toBeA('number')
+    })
+    
+  it('should clear completedAt when todo is not completed', async () => {
+    const newText = 'Second test todo updated'
+
+    const res = await request(app)
+      .patch(`/todos/${secondTestTodo._id}`)
+      .send({
+        text: newText,
+        completed: false
+      })
+      .expect(200)
+
+    const { todo: {text, completed, completedAt} } = res.body
+    expect(text).toBe(newText)
+    expect(completed).toBe(false)
+    expect(completedAt).toNotExist()
+  })
 })
