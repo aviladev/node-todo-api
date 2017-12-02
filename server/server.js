@@ -7,6 +7,7 @@ const _ = require('lodash')
 const { mongoose } = require('./db/mongoose')
 const { Todo } = require('./models/todo')
 const { User }  = require('./models/user')
+const { authenticate } = require('./middleware/authenticate')
 
 const app = express()
 const PORT = process.env.PORT
@@ -104,6 +105,10 @@ app.post('/users', async ({body}, res) => {
     console.log(e.toJSON())
     res.status(400).send()
   }
+})
+
+app.get('/users/me', authenticate, async (req, res) => {
+  res.send(req.user)
 })
 
 app.listen(PORT, () =>
