@@ -99,10 +99,8 @@ app.post('/users', async ({body}, res) => {
   try {
     await user.save()
     const token = await user.generateAuthToken()
-    console.log(user)
     res.header('x-auth', token).send(user)
   } catch (e) {
-    console.log(e.toJSON())
     res.status(400).send()
   }
 })
