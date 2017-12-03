@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const Schema = mongoose.Schema.bind(mongoose)
 const model = mongoose.model.bind(mongoose)
 const _ = require('lodash')
+const bcrypt = require('bcryptjs')
 
 const { isEmail } = require('validator')
 const jwt = require('jsonwebtoken')
@@ -46,7 +47,6 @@ UserSchema.methods.toJSON = function () {
 UserSchema.methods.generateAuthToken = async function () {
   const user = this
   const access = 'auth'
-
   const data = {
     _id: user._id.toHexString(),
     access
@@ -76,6 +76,21 @@ UserSchema.statics.findByToken = function (token) {
     'tokens.access': 'auth'
   })
 }
+
+UserSchema.pre('save', async function (next) {
+  const user = this
+
+  if (user.isModified('password')) {
+    const salt = await bcrypt.genSalt(10)
+    const hash = await bcrypt.hash(user.password, salt)
+
+    user.password = hash
+    next()
+  } else {
+    next()
+  }
+
+})
 
 const User = model('User', UserSchema)
 
