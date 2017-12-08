@@ -4,24 +4,14 @@ const { ObjectID } = require('mongodb')
 
 const { app } = require('../server')
 const { Todo } = require('../models/todo')
-
-const todos = [{
-    _id: ObjectID(),
-    text: 'First test todo'
-  }, {
-    _id: ObjectID(),
-    text: 'Second test todo',
-    completed: true,
-    completedAt: 333
-  }
-]
+const { User } = require('../models/user')
+const { todos, populateTodos, users, populateUsers } = require('./seed/seed')
 
 const [firstTestTodo, secondTestTodo] = todos
+const [firstTestUser, secondTestUser] = users
 
-beforeEach(async () => {
-  await Todo.remove({})
-  await Todo.insertMany(todos)
-})
+beforeEach(populateUsers)
+beforeEach(populateTodos)
 
 describe('POST /todos', () => {
   it('should create a new todo', () => {
@@ -155,5 +145,69 @@ describe('PATCH /todos/:id', () => {
     expect(text).toBe(newText)
     expect(completed).toBe(false)
     expect(completedAt).toNotExist()
+  })
+})
+
+describe('GET /users/me', () => {
+  it('should return user if authenticated', async () => {
+    const response = await request(app)
+      .get('/users/me')
+      .set('x-auth', firstTestUser.tokens[0].token)
+      .expect(200)
+
+    const { body: {_id, email} } = response
+
+    expect(_id).toBe(firstTestUser._id.toHexString())
+    expect(email).toBe(firstTestUser.email)
+  })
+
+  it('should return 401 if not authenticated', async () => {
+    const { body } = await request(app)
+      .get('/users/me')
+      .expect(401)
+    
+    expect(body).toEqual({})
+  })
+})
+
+describe('POST /users', () => {
+  it('should create a user', async () => {
+    const email = 'newemail@example.com'
+    const password = '123abc'
+
+    const response = await request(app)
+      .post('/users')
+      .send({ email, password })
+      .expect(200)
+
+    const { header, body } = response
+
+    expect(header['x-auth']).toExist()
+    expect(body._id).toExist()
+    expect(body.email).toBe(email)
+
+    const user = await User.findOne({email})
+    expect(user).toExist()
+    expect(user.password).toNotBe(password)
+  })
+
+  it('should return validation errors if request invalid', async () => {
+    const email = 'invalidEmail.com'
+    const password = 'less6'
+
+    const response = await request(app)
+      .post('/users')
+      .send({ email, password })
+      .expect(400)
+  })
+
+  it('should not create user if email in use', async () => {
+    const email = firstTestUser.email
+    const password = '123abc'
+
+    const response = await request(app)
+      .post('/users')
+      .send({ email, password })
+      .expect(400)
   })
 })
