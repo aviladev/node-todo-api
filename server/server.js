@@ -14,27 +14,38 @@ const PORT = process.env.PORT
 
 app.use(express.json())
 
-app.post('/todos', ({ body: {text} }, res) => {
-  const todo = new Todo({ text })
+app.post('/todos', authenticate, (req, res) => {
+  const { body: {text}, user: {_id} } = req
+
+  const todo = new Todo({ text, _creator: _id })
 
   todo.save()
     .then(doc => res.send(doc))
     .catch(err => res.status(400).send(err))
 })
 
-app.get('/todos', (req, res) => {
-  Todo.find()
+app.get('/todos', authenticate, (req, res) => {
+  Todo
+    .find({
+      _creator: req.user._id
+    })
     .then(todos => res.send({ todos }))
     .catch(e => 
       res.status(400).send(e)
     )
 })
 
-app.get('/todos/:id', ({ params: {id} }, res) => {
+app.get('/todos/:id', authenticate, (req, res) => {
+  const { user, params: {id} } = req
+
   if ( !ObjectID.isValid(id) )
     return res.status(404).send()
 
-  Todo.findById(id)
+  Todo
+    .findOne({
+      _id: id,
+      _creator: user._id
+    })
     .then(todo => {
       if (!todo)
         return res.status(404).send()
@@ -44,13 +55,19 @@ app.get('/todos/:id', ({ params: {id} }, res) => {
     .catch( e => res.status(400).send() )
 })
 
-app.delete('/todos/:id', async ({ params: {id} }, res) => {
-  if ( !ObjectID.isValid(id) ){
+app.delete('/todos/:id', authenticate, async (req, res) => {
+  const { user, params } = req
+
+  if ( !ObjectID.isValid(params.id) ) {
     return res.status(404).send()
   }
 
   try {
-    const removedTodo = await Todo.findByIdAndRemove(id)
+    const removedTodo = await Todo.findOneAndRemove({
+      _id: params.id,
+      _creator: user._id
+    })
+
     if (!removedTodo)
       return res.status(404).send()
 
@@ -60,7 +77,9 @@ app.delete('/todos/:id', async ({ params: {id} }, res) => {
   }
 })
 
-app.patch('/todos/:id', async ({ body, params: {id} }, res) => {
+app.patch('/todos/:id', authenticate, async (req, res) => {
+  const { body, user, params: { id } } = req
+
   if (!ObjectID.isValid(id)) {
     return res.status(404).send()
   }
@@ -76,7 +95,8 @@ app.patch('/todos/:id', async ({ body, params: {id} }, res) => {
 
   try {
     const patchedTodo = await
-      Todo.findByIdAndUpdate(id,
+      Todo.findOneAndUpdate(
+        { _id: id, _creator: user._id },
         { $set: toPatch },
         { new: true }
       )

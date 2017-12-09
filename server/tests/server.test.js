@@ -16,9 +16,11 @@ beforeEach(populateTodos)
 describe('POST /todos', () => {
   it('should create a new todo', () => {
     const text = 'Test todo text'
-
+    const { tokens: [{token}] } = firstTestUser
+    
     return request(app)
       .post('/todos')
+      .set('x-auth', token)
       .send({ text })
       .expect(200)
       .then(({ body }) =>
@@ -27,16 +29,18 @@ describe('POST /todos', () => {
       .then(() =>
         Todo.find({text})
           .then(todos => {
-            expect(todos.length).toBe(1)
+           expect(todos.length).toBe(1)
             expect(todos[0].text).toBe(text)
           })
       )
-    }
-  )
+  })
 
-  it('should not create todo with invalid body data', () =>
-    request(app)
+  it('should not create todo with invalid body data', () => {
+    const { tokens: [{token}] } = firstTestUser
+
+    return request(app)
       .post('/todos')
+      .set('x-auth', token)
       .send()
       .expect(400)
       .then(() => Todo.find()
@@ -44,97 +48,160 @@ describe('POST /todos', () => {
           expect(todos.length).toBe(2)
         })
       )
-  )
+  })
 })
 
 describe('GET /todos', () => {
   
   it('should get all todos', async () => {
+    const { tokens: [{ token }] } = firstTestUser
+
     const res = await request(app)
       .get('/todos')
+      .set('x-auth', token)
       .expect(200)
     
     const { todos } = res.body
-    expect(todos.length).toBe(2)
+    expect(todos.length).toBe(1)
   })
 
 })
 
 describe('GET /todos/:id', () => {
   it('should return todo doc', async () => {
+    const { tokens: [{token}] } = firstTestUser
+    
     const res = await request(app)
       .get(`/todos/${firstTestTodo._id.toHexString()}`)
+      .set('x-auth', token)
       .expect(200)
 
     const { todo } = res.body
-    
+
     expect(todo.text).toBe(firstTestTodo.text)
   })
 
-  it('should return 404 if todo not found', () =>
-    request(app)
-      .get(`/todos/${ObjectID().toHexString()}`)
-      .expect(404)
-  )
+  it('should not return todo doc created by other user', async () => {
+    const { tokens: [{ token: firstUserToken }] } = firstTestUser
+    const secondTodoId = secondTestTodo._id.toHexString()
 
-  it('should return 404 for non-object ids', () =>
-    request(app)
-      .get(`/todos/${123}`)
+    await request(app)
+      .get(`/todos/${secondTodoId}`)
+      .set('x-auth', firstUserToken)
       .expect(404)
-  )
+  })
+
+  it('should return 404 if todo not found', () => {
+    const { tokens: [{token}] } = firstTestUser
+
+    return request(app)
+      .get(`/todos/${ObjectID().toHexString()}`)
+      .set('x-auth', token)
+      .expect(404)
+  })
+  
+  it('should return 404 for non-object ids', () => {
+    const { tokens: [{token}] } = firstTestUser
+
+    return request(app)
+      .get(`/todos/${123}`)
+      .set('x-auth', token)
+      .expect(404)
+  })
 })
 
 describe('DELETE /todos/:id', () => {
   it('should remove a todo', async () => {
-    const hexID = firstTestTodo._id.toHexString()
+    const { tokens: [{token}] } = secondTestUser
+    const todoID = secondTestTodo._id.toHexString()
 
     const res = await request(app)
-      .delete(`/todos/${hexID}`)
+      .delete(`/todos/${todoID}`)
+      .set('x-auth', token)
       .expect(200)
 
     const { body: {removedTodo} } = res
-    expect(removedTodo._id).toBe(hexID)
+    expect(removedTodo._id).toBe(todoID)
 
-    const queriedTodo = await Todo.findById(hexID)
+    const queriedTodo = await Todo.findById(todoID)
     expect(queriedTodo).toNotExist()
   })
 
-  it('should return 404 if todo not found', () =>
-    request(app)
-      .delete(`/todos/${ObjectID().toHexString()}`)
+  it('should not remove the todo created by other user', async () => {
+    const firstTodoID = firstTestTodo._id.toHexString()
+    const { tokens: [{ token }] } = secondTestUser
+    
+    const res = await request(app)
+      .delete(`/todos/${firstTodoID}`)
+      .set('x-auth', token)
       .expect(404)
-  )
+    
+    const queriedTodo = await Todo.findById(firstTodoID)
+    expect(queriedTodo).toExist()
+  })
+  
+  it('should return 404 if todo not found', () => {
+    const { tokens: [{ token }] } = secondTestUser
 
-  it('should return 404 for non-object ids', () =>
-    request(app)
-      .delete(`/todos/${123}`)
+    return request(app)
+      .delete(`/todos/${ObjectID().toHexString()}`)
+      .set('x-auth', token)
       .expect(404)
-  )
+  })
+
+  it('should return 404 for non-object ids', () => {
+    const { tokens: [{ token }] } = secondTestUser
+
+    return request(app)
+      .delete(`/todos/${123}`)
+      .set('x-auth', token)
+      .expect(404)
+  })
 })
 
 describe('PATCH /todos/:id', () => {
   it('should update the todo', async () => {
-      const newText = 'First test todo updated'
-      
-      const res = await request(app)
+    const { tokens: [{token}] } = firstTestUser
+    const newText = 'First test todo updated'
+    
+    const res = await request(app)
       .patch(`/todos/${firstTestTodo._id}`)
+      .set('x-auth', token)
       .send({
         text: newText,
         completed: true 
       })
       .expect(200)
       
-      const { todo: {text, completed, completedAt} } = res.body
-      expect(text).toBe(newText)
-      expect(completed).toBe(true)
-      expect(completedAt).toBeA('number')
-    })
+    const { todo: {text, completed, completedAt} } = res.body
+    expect(text).toBe(newText)
+    expect(completed).toBe(true)
+    expect(completedAt).toBeA('number')
+  })
+
+  it('should not update the todo created by other user', async () => {
+    const { tokens: [{ token }] } = secondTestUser
+    const newText = 'First test todo updated'
+
+    const res = await request(app)
+      .patch(`/todos/${firstTestTodo._id}`)
+      .set('x-auth', token)
+      .send({
+        text: newText,
+        completed: true
+      })
+      .expect(404)
+
+    expect(res.body).toEqual({})
+  })
     
   it('should clear completedAt when todo is not completed', async () => {
+    const { tokens: [{token}] } = secondTestUser
     const newText = 'Second test todo updated'
 
     const res = await request(app)
       .patch(`/todos/${secondTestTodo._id}`)
+      .set('x-auth', token)
       .send({
         text: newText,
         completed: false
@@ -226,7 +293,7 @@ describe('POST /users/login', () => {
     expect(header['x-auth']).toExist()
 
     const user = await User.findById(secondTestUser._id)
-    expect(user.tokens[0]).toInclude({
+    expect(user.tokens[1]).toInclude({
       access: 'auth',
       token: header['x-auth']
     })
@@ -245,7 +312,7 @@ describe('POST /users/login', () => {
     expect(header['x-auth']).toNotExist()
 
     const user = await User.findById(secondTestUser._id)
-    expect(user.tokens.length).toBe(0)
+    expect(user.tokens.length).toBe(1)
   })
 })
 
