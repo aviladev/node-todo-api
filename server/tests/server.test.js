@@ -248,3 +248,17 @@ describe('POST /users/login', () => {
     expect(user.tokens.length).toBe(0)
   })
 })
+
+describe('DELETE /users/me/token', () => {
+  it('should remove auth token on logout', async () => {
+    const { _id, tokens: [{token}] } = firstTestUser
+
+    await request(app)
+      .delete('/users/me/token')
+      .set('x-auth', token)
+      .expect(200)
+
+    const user = await User.findById(_id)
+    expect(user.tokens.length).toBe(0)
+  })
+})
