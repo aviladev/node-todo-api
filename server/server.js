@@ -109,6 +109,18 @@ app.get('/users/me', authenticate, async (req, res) => {
   res.send(req.user)
 })
 
+app.post('/users/login', async ({ body }, res) => {
+  const { email, password } = body
+
+  try {
+    const user = await User.findByCredentials(email, password)
+    const token = await user.generateAuthToken()
+    res.header('x-auth', token).send(user)
+  } catch (e) {
+    res.status(400).send()
+  }
+})
+
 app.listen(PORT, () =>
   console.log(`Started on port ${PORT}`)
 )
