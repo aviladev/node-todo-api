@@ -211,3 +211,40 @@ describe('POST /users', () => {
       .expect(400)
   })
 })
+
+describe('POST /users/login', () => {
+  it('should login user and return auth token', async () => {
+    const response = await request(app)
+      .post('/users/login')
+      .send({
+        email: secondTestUser.email,
+        password: secondTestUser.password
+      })
+      .expect(200)
+    
+    const { header } = response
+    expect(header['x-auth']).toExist()
+
+    const user = await User.findById(secondTestUser._id)
+    expect(user.tokens[0]).toInclude({
+      access: 'auth',
+      token: header['x-auth']
+    })
+  })
+
+  it('should reject invalid login', async () => {
+    const response = await request(app)
+      .post('/users/login')
+      .send({
+        email: secondTestUser.email,
+        password: 'invalidpw'
+      })
+      .expect(400)
+
+    const { header } = response
+    expect(header['x-auth']).toNotExist()
+
+    const user = await User.findById(secondTestUser._id)
+    expect(user.tokens.length).toBe(0)
+  })
+})
