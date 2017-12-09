@@ -121,6 +121,17 @@ app.post('/users/login', async ({ body }, res) => {
   }
 })
 
+app.delete('/users/me/token', authenticate, async (req, res) => {
+  const { user, token } = req
+
+  try {
+    await user.removeToken(token)
+    res.status(200).send()
+  } catch (e) {
+    res.status(400).send()
+  }
+})
+
 app.listen(PORT, () =>
   console.log(`Started on port ${PORT}`)
 )
