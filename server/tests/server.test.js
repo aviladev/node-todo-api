@@ -124,7 +124,7 @@ describe('DELETE /todos/:id', () => {
     expect(removedTodo._id).toBe(todoID)
 
     const queriedTodo = await Todo.findById(todoID)
-    expect(queriedTodo).toNotExist()
+    expect(queriedTodo).toBeFalsy()
   })
 
   it('should not remove the todo created by other user', async () => {
@@ -137,7 +137,7 @@ describe('DELETE /todos/:id', () => {
       .expect(404)
     
     const queriedTodo = await Todo.findById(firstTodoID)
-    expect(queriedTodo).toExist()
+    expect(queriedTodo).toBeTruthy()
   })
   
   it('should return 404 if todo not found', () => {
@@ -176,7 +176,7 @@ describe('PATCH /todos/:id', () => {
     const { todo: {text, completed, completedAt} } = res.body
     expect(text).toBe(newText)
     expect(completed).toBe(true)
-    expect(completedAt).toBeA('number')
+    expect(typeof completedAt).toBe('number')
   })
 
   it('should not update the todo created by other user', async () => {
@@ -211,7 +211,7 @@ describe('PATCH /todos/:id', () => {
     const { todo: {text, completed, completedAt} } = res.body
     expect(text).toBe(newText)
     expect(completed).toBe(false)
-    expect(completedAt).toNotExist()
+    expect(completedAt).toBeFalsy()
   })
 })
 
@@ -249,13 +249,13 @@ describe('POST /users', () => {
 
     const { header, body } = response
 
-    expect(header['x-auth']).toExist()
-    expect(body._id).toExist()
+    expect(header['x-auth']).toBeTruthy()
+    expect(body._id).toBeTruthy()
     expect(body.email).toBe(email)
 
     const user = await User.findOne({email})
-    expect(user).toExist()
-    expect(user.password).toNotBe(password)
+    expect(user).toBeTruthy()
+    expect(user.password).not.toBe(password)
   })
 
   it('should return validation errors if request invalid', async () => {
@@ -290,10 +290,10 @@ describe('POST /users/login', () => {
       .expect(200)
     
     const { header } = response
-    expect(header['x-auth']).toExist()
+    expect(header['x-auth']).toBeTruthy()
 
     const user = await User.findById(secondTestUser._id)
-    expect(user.tokens[1]).toInclude({
+    expect(user.toObject().tokens[1]).toMatchObject({
       access: 'auth',
       token: header['x-auth']
     })
@@ -309,7 +309,7 @@ describe('POST /users/login', () => {
       .expect(400)
 
     const { header } = response
-    expect(header['x-auth']).toNotExist()
+    expect(header['x-auth']).toBeFalsy()
 
     const user = await User.findById(secondTestUser._id)
     expect(user.tokens.length).toBe(1)
