@@ -47,9 +47,10 @@ const populateTodos = async () => {
 
 const populateUsers = async () => {
   await User.remove({})
-  users.forEach(async user =>
+
+  for (const user of users) {
     await new User(user).save()
-  )
+  }
 }
 
 module.exports = { todos, populateTodos, users, populateUsers }
